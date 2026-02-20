@@ -32,11 +32,6 @@ export function getRiskLevel(score) {
 }
 
 export function getRiskColor(level) {
-    const colors = {
-        low: '#10b981',
-        medium: '#f59e0b',
-        high: '#f97316',
-        critical: '#f43f5e',
-    };
+    const colors = { low: '#10b981', medium: '#f59e0b', high: '#f97316', critical: '#f43f5e' };
     return colors[level] || colors.low;
 }

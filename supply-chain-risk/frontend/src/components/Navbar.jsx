@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 export default function Navbar() {
     const { user, logout, isPremium } = useAuth();
     const location = useLocation();
-
     const isActive = (path) => location.pathname === path ? 'active' : '';
 
     return (
@@ -15,14 +14,12 @@ export default function Navbar() {
                     <div className="brand-icon">⚡</div>
                     <span>SupplyShield</span>
                 </Link>
-
                 <div className="navbar-links">
                     <Link to="/" className={isActive('/')}>Dashboard</Link>
                     <Link to="/map" className={isActive('/map')}>Supply Map</Link>
                     <Link to="/signals" className={isActive('/signals')}>Live Signals</Link>
                     <Link to="/categories" className={isActive('/categories')}>Categories</Link>
                 </div>
-
                 <div className="navbar-actions">
                     {user ? (
                         <>

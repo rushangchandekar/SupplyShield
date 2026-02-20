@@ -25,26 +25,11 @@ export default function ScoreGauge({ score, label, size = 160 }) {
     return (
         <div className="score-gauge" style={{ width: size, height: size }}>
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-                <circle
-                    className="score-gauge-bg"
-                    cx={size / 2}
-                    cy={size / 2}
-                    r={radius}
-                />
-                <circle
-                    className="score-gauge-fill"
-                    cx={size / 2}
-                    cy={size / 2}
-                    r={radius}
-                    stroke={color}
-                    strokeDasharray={circumference}
-                    strokeDashoffset={offset}
-                />
+                <circle className="score-gauge-bg" cx={size / 2} cy={size / 2} r={radius} />
+                <circle className="score-gauge-fill" cx={size / 2} cy={size / 2} r={radius} stroke={color} strokeDasharray={circumference} strokeDashoffset={offset} />
             </svg>
             <div className="score-gauge-text">
-                <div className={`score-gauge-value ${getRiskClass(score)}`}>
-                    {Math.round(score)}
-                </div>
+                <div className={`score-gauge-value ${getRiskClass(score)}`}>{Math.round(score)}</div>
                 <div className="score-gauge-label">{label || 'Risk Score'}</div>
             </div>
         </div>
