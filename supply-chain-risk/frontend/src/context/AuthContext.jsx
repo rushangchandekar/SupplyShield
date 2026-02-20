@@ -1,41 +1,63 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getProfile } from '../services/api';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useUser, useClerk, useAuth as useClerkAuth } from '@clerk/clerk-react';
+import { setClerkTokenGetter } from '../services/api';
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+const PREMIUM_STORAGE_KEY = 'supplyshield_premium';
 
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            getProfile()
-                .then(res => setUser(res.data))
-                .catch(() => {
-                    localStorage.removeItem('token');
-                    setUser(null);
-                })
-                .finally(() => setLoading(false));
-        } else {
-            setLoading(false);
+export function AuthProvider({ children }) {
+    const { user, isLoaded } = useUser();
+    const { signOut } = useClerk();
+    const { getToken } = useClerkAuth();
+
+    // Track premium status in localStorage (for demo — no payment gateway)
+    const [isPremium, setIsPremium] = useState(() => {
+        try {
+            return localStorage.getItem(PREMIUM_STORAGE_KEY) === 'true';
+        } catch {
+            return false;
         }
+    });
+
+    // Connect Clerk's token to our API layer
+    useEffect(() => {
+        if (isLoaded && user) {
+            setClerkTokenGetter(getToken);
+        }
+    }, [isLoaded, user, getToken]);
+
+    const upgradeToPremium = useCallback(() => {
+        setIsPremium(true);
+        localStorage.setItem(PREMIUM_STORAGE_KEY, 'true');
     }, []);
 
-    const login = (token, userData) => {
-        localStorage.setItem('token', token);
-        setUser(userData);
-    };
+    const downgradeToFree = useCallback(() => {
+        setIsPremium(false);
+        localStorage.removeItem(PREMIUM_STORAGE_KEY);
+    }, []);
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        setUser(null);
+    const value = {
+        user: user ? {
+            id: user.id,
+            email: user.primaryEmailAddress?.emailAddress,
+            full_name: user.fullName,
+            imageUrl: user.imageUrl,
+            subscription_tier: isPremium ? 'paid' : 'free',
+        } : null,
+        loading: !isLoaded,
+        logout: () => {
+            // Clear premium on logout if you want, or keep it
+            signOut();
+        },
+        isPremium,
+        upgradeToPremium,
+        downgradeToFree,
+        login: () => { }, // Clerk handles login via components
     };
-
-    const isPremium = user?.subscription_tier === 'paid';
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading, isPremium }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );
@@ -43,6 +65,6 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
     const context = useContext(AuthContext);
-    if (!context) throw new Error('useAuth must be used within AuthProvider');
+    if (!context) return { user: null, loading: true, logout: () => { }, isPremium: false, upgradeToPremium: () => { }, downgradeToFree: () => { }, login: () => { } };
     return context;
 }

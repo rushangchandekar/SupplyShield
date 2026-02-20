@@ -1,22 +1,46 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { upgradeSubscription } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 export default function Pricing() {
-    const { user, isPremium, login } = useAuth();
+    const { user, isPremium, upgradeToPremium, downgradeToFree } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
     const navigate = useNavigate();
 
     const handleUpgrade = async () => {
-        if (!user) { navigate('/register'); return; }
-        try { setLoading(true); await upgradeSubscription(); const updatedUser = { ...user, subscription_tier: 'paid' }; login(localStorage.getItem('token'), updatedUser); navigate('/categories'); }
-        catch (err) { console.error('Upgrade failed:', err); }
-        finally { setLoading(false); }
+        setLoading(true);
+        // Simulate a short processing delay for UX
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        upgradeToPremium();
+        setLoading(false);
+        setShowSuccess(true);
+        // Redirect to categories after a brief success message
+        setTimeout(() => {
+            navigate('/categories');
+        }, 1500);
+    };
+
+    const handleDowngrade = () => {
+        downgradeToFree();
     };
 
     return (
         <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 20px' }}>
+            {showSuccess && (
+                <div className="animate-in" style={{
+                    background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(59,130,246,0.1))',
+                    border: '1px solid rgba(16,185,129,0.3)',
+                    borderRadius: 16,
+                    padding: '24px 32px',
+                    marginBottom: 32,
+                    textAlign: 'center',
+                }}>
+                    <div style={{ fontSize: '2rem', marginBottom: 8 }}>🎉</div>
+                    <h3 style={{ color: '#10b981', fontWeight: 800, fontSize: '1.3rem', marginBottom: 4 }}>Welcome to Premium!</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Redirecting you to Category Intelligence...</p>
+                </div>
+            )}
             <div style={{ textAlign: 'center', marginBottom: 48 }} className="animate-in">
                 <h1 style={{ fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-0.03em' }}>Choose Your Plan</h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', marginTop: 12, maxWidth: 600, margin: '12px auto 0' }}>Get the supply chain intelligence you need. Start free, upgrade when you need deeper insights.</p>
@@ -30,7 +54,11 @@ export default function Pricing() {
                         <li>Macro supply risk dashboard</li><li>Overall risk score</li><li>Segment-level overview</li><li>Mandi & eNAM price feeds</li><li>Weather disruption signals</li><li>Basic recommendations</li><li>7-day risk trend</li>
                         <li className="disabled">Category-level insights</li><li className="disabled">Trade & logistics raw data</li><li className="disabled">Supply network corridors</li><li className="disabled">Deep bottleneck analysis</li>
                     </ul>
-                    {!user ? <a href="/register" className="btn btn-secondary btn-lg" style={{ width: '100%', justifyContent: 'center' }}>Get Started Free</a> : !isPremium ? <button className="btn btn-secondary btn-lg" disabled style={{ width: '100%', justifyContent: 'center', opacity: 0.6 }}>Current Plan</button> : null}
+                    {!isPremium ? (
+                        <button className="btn btn-secondary btn-lg" disabled style={{ width: '100%', justifyContent: 'center', opacity: 0.6 }}>Current Plan</button>
+                    ) : (
+                        <button className="btn btn-secondary btn-lg" style={{ width: '100%', justifyContent: 'center' }} onClick={handleDowngrade}>Switch to Free</button>
+                    )}
                 </div>
                 <div className="glass-card pricing-card featured">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-amber)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>⭐ Premium</span></div>
@@ -39,7 +67,20 @@ export default function Pricing() {
                     <ul className="pricing-features">
                         <li>Everything in Free</li><li>Category-level insights (Food, Clothing, Stationery, Toys)</li><li>Deep segment-level risk analysis</li><li>Import/Export trade data access</li><li>Logistics corridor monitoring</li><li>Supply network corridor visualization</li><li>Advanced bottleneck detection</li><li>Category-specific recommendations</li><li>Radar chart risk factor analysis</li><li>Full recommendation engine</li><li>Priority support</li>
                     </ul>
-                    {isPremium ? <button className="btn btn-secondary btn-lg" disabled style={{ width: '100%', justifyContent: 'center', opacity: 0.6 }}>Current Plan</button> : <button className="btn btn-premium btn-lg" style={{ width: '100%', justifyContent: 'center' }} onClick={handleUpgrade} disabled={loading}>{loading ? 'Upgrading...' : user ? 'Upgrade Now' : 'Start Free Trial'}</button>}
+                    {isPremium ? (
+                        <button className="btn btn-secondary btn-lg" disabled style={{ width: '100%', justifyContent: 'center', opacity: 0.6 }}>
+                            ✅ Current Plan
+                        </button>
+                    ) : (
+                        <button className="btn btn-premium btn-lg" style={{ width: '100%', justifyContent: 'center' }} onClick={handleUpgrade} disabled={loading}>
+                            {loading ? (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                                    <span className="loading-spinner" style={{ width: 18, height: 18, borderWidth: 2 }}></span>
+                                    Processing...
+                                </span>
+                            ) : 'Upgrade Now — Free Trial'}
+                        </button>
+                    )}
                 </div>
             </div>
             <div className="glass-card animate-in animate-in-delay-2" style={{ marginTop: 48 }}>

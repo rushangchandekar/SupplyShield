@@ -7,18 +7,27 @@ const api = axios.create({
     headers: { 'Content-Type': 'application/json' },
 });
 
-api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+// Use Clerk's session token for API requests
+// We set the token dynamically from components that need it
+let getTokenFn = null;
+
+export const setClerkTokenGetter = (fn) => {
+    getTokenFn = fn;
+};
+
+api.interceptors.request.use(async (config) => {
+    if (getTokenFn) {
+        try {
+            const token = await getTokenFn();
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+        } catch (e) {
+            // Token fetch failed — proceed without auth header
+        }
     }
     return config;
 });
-
-export const registerUser = (data) => api.post('/auth/register', data);
-export const loginUser = (data) => api.post('/auth/login', data);
-export const getProfile = () => api.get('/auth/me');
-export const upgradeSubscription = () => api.post('/auth/upgrade');
 
 export const getDashboardSummary = () => api.get('/dashboard/summary');
 export const getCategoryInsights = (category) => api.get(`/dashboard/category/${category}`);
@@ -31,5 +40,6 @@ export const getEnamData = (params) => api.get('/data/enam', { params });
 export const getTradeData = (params) => api.get('/data/trade', { params });
 export const getWeatherData = () => api.get('/data/weather');
 export const getLogisticsData = (params) => api.get('/data/logistics', { params });
+export const upgradeSubscription = () => api.post('/auth/upgrade');
 
 export default api;
