@@ -1,5 +1,5 @@
 /* =============================================
-   SupplyShield Design System — Premium Dark Theme
+   SupplyShield Design System — Premium Adaptive Theme
    ============================================= */
 
 :root {
@@ -30,6 +30,108 @@
     --radius-md: 10px;
     --radius-lg: 16px;
     --radius-xl: 24px;
+}
+
+/* ─── Light Mode Overrides ────────────────── */
+.light-mode {
+    --bg-primary: #f0f4f8;
+    --bg-secondary: #e8edf4;
+    --bg-card: rgba(255, 255, 255, 0.9);
+    --bg-glass: rgba(0, 0, 0, 0.03);
+    --bg-glass-hover: rgba(0, 0, 0, 0.06);
+    --border-glass: rgba(0, 0, 0, 0.08);
+    --border-glass-hover: rgba(0, 0, 0, 0.18);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.12);
+    --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.light-mode body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.light-mode .navbar {
+    background: rgba(240, 244, 248, 0.9);
+    border-bottom-color: var(--border-glass);
+}
+
+.light-mode .glass-card {
+    background: var(--bg-card);
+    box-shadow: var(--shadow-sm);
+}
+
+.light-mode .custom-tooltip {
+    background: rgba(255, 255, 255, 0.98);
+    color: var(--text-primary);
+}
+
+.light-mode .score-gauge-bg {
+    stroke: rgba(0, 0, 0, 0.06);
+}
+
+.light-mode .segment-bar {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.light-mode .recharts-cartesian-grid-horizontal line,
+.light-mode .recharts-cartesian-grid-vertical line {
+    stroke: rgba(0, 0, 0, 0.06);
+}
+
+.light-mode .recharts-text {
+    fill: var(--text-muted) !important;
+}
+
+.light-mode .data-table td {
+    border-bottom-color: rgba(0, 0, 0, 0.04);
+}
+
+.light-mode .data-table tr:hover td {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.light-mode .loading-spinner {
+    border-color: rgba(0, 0, 0, 0.08);
+    border-top-color: var(--accent-blue);
+}
+
+.light-mode .signal-item {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.light-mode .signal-item:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.light-mode .bottleneck-card,
+.light-mode .recommendation-card {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.light-mode .recommendation-tag {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+.light-mode .form-input {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: var(--border-glass);
+    color: var(--text-primary);
+}
+
+.light-mode .btn-secondary {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: var(--border-glass);
+    color: var(--text-secondary);
+}
+
+.light-mode .btn-secondary:hover {
+    background: rgba(0, 0, 0, 0.09);
+    color: var(--text-primary);
 }
 
 * {
@@ -866,6 +968,46 @@ body {
     color: var(--text-muted);
 }
 
+/* ─── Theme Toggle Button ─────────────────── */
+.theme-toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.3s, border-color 0.3s;
+    flex-shrink: 0;
+    padding: 0;
+    outline: none;
+}
+
+.theme-toggle:hover {
+    border-color: var(--border-glass-hover);
+}
+
+.theme-toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    line-height: 1;
+}
+
+.theme-toggle.light .theme-toggle-thumb {
+    transform: translateX(20px);
+    background: var(--gradient-premium);
+}
+
 /* Animations */
 @keyframes spin {
     to {
@@ -961,5 +1103,14 @@ body {
         flex-direction: column;
         gap: 12px;
         text-align: center;
+    }
+
+    /* Sign-in split layout: collapse to single column on mobile */
+    .signin-split {
+        grid-template-columns: 1fr !important;
+    }
+
+    .signin-hero {
+        display: none !important;
     }
 }

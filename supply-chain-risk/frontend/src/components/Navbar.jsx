@@ -2,10 +2,12 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { UserButton, useUser } from '@clerk/clerk-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Navbar() {
     const { user } = useUser();
     const { isPremium } = useAuth();
+    const { isDark, toggle } = useTheme();
     const location = useLocation();
     const isActive = (path) => location.pathname === path ? 'active' : '';
 
@@ -23,6 +25,18 @@ export default function Navbar() {
                     <Link to="/categories" className={isActive('/categories')}>Categories</Link>
                 </div>
                 <div className="navbar-actions">
+                    {/* Dark / Light Toggle */}
+                    <button
+                        className={`theme-toggle ${isDark ? '' : 'light'}`}
+                        onClick={toggle}
+                        title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                        aria-label="Toggle dark/light mode"
+                    >
+                        <span className="theme-toggle-thumb">
+                            {isDark ? '🌙' : '☀️'}
+                        </span>
+                    </button>
+
                     {isPremium ? (
                         <span className="badge-premium" style={{
                             background: 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(234,179,8,0.1))',
@@ -37,7 +51,7 @@ export default function Navbar() {
                         <Link to="/pricing" className="btn btn-premium btn-sm">Upgrade</Link>
                     )}
                     {user && (
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginRight: 8 }}>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginRight: 4 }}>
                             {user.firstName || user.primaryEmailAddress?.emailAddress}
                         </span>
                     )}
