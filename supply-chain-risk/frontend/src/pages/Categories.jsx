@@ -18,12 +18,258 @@ const CustomTooltip = ({ active, payload, label }) => {
     return (<div className="custom-tooltip"><p className="label">{label}</p>{payload.map((p, i) => (<p key={i} className="value" style={{ color: p.color }}>{p.name}: {typeof p.value === 'number' ? p.value.toFixed(1) : p.value}</p>))}</div>);
 };
 
+/* ─── CSV Export ───────────────────────────── */
+function downloadCSV(categoryData) {
+    const cat = categoryData.category || 'Category';
+    const now = new Date().toISOString().slice(0, 10);
+    let csv = `SupplyShield — ${cat} Risk Report\nGenerated: ${now}\n\n`;
+
+    // Summary
+    csv += `RISK SUMMARY\n`;
+    csv += `Category,Risk Score,Risk Level,Computed At\n`;
+    csv += `${cat},${categoryData.risk_score?.toFixed(2)},${categoryData.risk_level},${categoryData.computed_at || now}\n\n`;
+
+    // Commodities tracked
+    csv += `TRACKED COMMODITIES\n`;
+    csv += `${(categoryData.commodities_tracked || []).join(', ')}\n\n`;
+
+    // Contributing factors
+    csv += `CONTRIBUTING RISK FACTORS\n`;
+    csv += `Factor,Weight,Contribution\n`;
+    Object.entries(categoryData.contributing_factors || {}).forEach(([key, val]) => {
+        csv += `${key.replace(/_/g, ' ')},${((val.weight || 0) * 100).toFixed(1)}%,${(val.contribution || 0).toFixed(2)}\n`;
+    });
+    csv += `\n`;
+
+    // Price data
+    if (categoryData.price_data?.length) {
+        csv += `COMMODITY PRICE DATA\n`;
+        csv += `Commodity,State,Market,Min Price (₹),Modal Price (₹),Max Price (₹),Arrival Date\n`;
+        categoryData.price_data.forEach(p => {
+            csv += `${p.commodity || ''},${p.state || ''},${p.market || ''},${p.min_price || 0},${p.modal_price || 0},${p.max_price || 0},${p.arrival_date || ''}\n`;
+        });
+        csv += `\n`;
+    }
+
+    // Bottlenecks
+    if (categoryData.bottlenecks?.length) {
+        csv += `BOTTLENECKS\n`;
+        csv += `Region,Combined Risk,Explanations\n`;
+        categoryData.bottlenecks.forEach(b => {
+            csv += `${b.region || ''},${b.combined_risk || 0},"${(b.explanations || []).join('; ')}"\n`;
+        });
+        csv += `\n`;
+    }
+
+    // Recommendations
+    if (categoryData.recommendations?.length) {
+        csv += `RECOMMENDATIONS\n`;
+        csv += `Priority,Title,Action Type,Description\n`;
+        categoryData.recommendations.forEach(r => {
+            csv += `P${r.priority},${r.title},${r.action_type?.replace(/_/g, ' ')},"${r.description}"\n`;
+        });
+    }
+
+    // Trigger download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `SupplyShield_${cat}_Report_${now}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+/* ─── PDF Export ───────────────────────────── */
+async function downloadPDF(categoryData) {
+    const { default: jsPDF } = await import('jspdf');
+    await import('jspdf-autotable');
+
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const cat = categoryData.category || 'Category';
+    const now = new Date().toISOString().slice(0, 10);
+    const pageW = doc.internal.pageSize.getWidth();
+    let y = 15;
+
+    // ── Header ──
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageW, 38, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(255, 255, 255);
+    doc.text('SupplyShield', 14, 18);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text('Supply Chain Risk Intelligence Platform', 14, 26);
+    doc.setFontSize(9);
+    doc.text(`Report generated: ${now}`, 14, 33);
+    y = 48;
+
+    // ── Category Title ──
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text(`${cat} — Category Risk Report`, 14, y);
+    y += 10;
+
+    // ── Risk Summary Box ──
+    const riskScore = categoryData.risk_score?.toFixed(1) || '0';
+    const riskLevel = (categoryData.risk_level || 'unknown').toUpperCase();
+    const riskColor = riskLevel === 'LOW' ? [16, 185, 129] : riskLevel === 'MEDIUM' ? [245, 158, 11] : riskLevel === 'HIGH' ? [244, 63, 94] : [239, 68, 68];
+
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(14, y, pageW - 28, 22, 3, 3, 'F');
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...riskColor);
+    doc.text(`Risk Score: ${riskScore} / 100`, 20, y + 9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Risk Level: ${riskLevel}`, 20, y + 17);
+
+    // Tracked commodities
+    const commodities = (categoryData.commodities_tracked || []).join(', ');
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Tracked: ${commodities}`, pageW / 2, y + 9);
+    y += 30;
+
+    // ── Contributing Factors Table ──
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text('Contributing Risk Factors', 14, y);
+    y += 2;
+
+    const factorRows = Object.entries(categoryData.contributing_factors || {}).map(([key, val]) => [
+        key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        `${((val.weight || 0) * 100).toFixed(1)}%`,
+        (val.contribution || 0).toFixed(2),
+    ]);
+
+    doc.autoTable({
+        startY: y,
+        head: [['Factor', 'Weight', 'Contribution']],
+        body: factorRows,
+        theme: 'grid',
+        headStyles: { fillColor: [59, 130, 246], fontSize: 9, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 9 },
+        margin: { left: 14, right: 14 },
+        styles: { cellPadding: 3 },
+    });
+    y = doc.lastAutoTable.finalY + 10;
+
+    // ── Price Data Table ──
+    if (categoryData.price_data?.length) {
+        if (y > 240) { doc.addPage(); y = 15; }
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text('Commodity Price Data', 14, y);
+        y += 2;
+
+        const priceRows = categoryData.price_data.map(p => [
+            p.commodity || '',
+            p.state || '',
+            p.market || '',
+            `₹${p.min_price || 0}`,
+            `₹${p.modal_price || 0}`,
+            `₹${p.max_price || 0}`,
+            p.arrival_date || '',
+        ]);
+
+        doc.autoTable({
+            startY: y,
+            head: [['Commodity', 'State', 'Market', 'Min', 'Modal', 'Max', 'Date']],
+            body: priceRows,
+            theme: 'grid',
+            headStyles: { fillColor: [16, 185, 129], fontSize: 8, fontStyle: 'bold' },
+            bodyStyles: { fontSize: 8 },
+            margin: { left: 14, right: 14 },
+            styles: { cellPadding: 2 },
+            columnStyles: { 0: { cellWidth: 28 }, 1: { cellWidth: 28 }, 2: { cellWidth: 28 } },
+        });
+        y = doc.lastAutoTable.finalY + 10;
+    }
+
+    // ── Bottlenecks ──
+    if (categoryData.bottlenecks?.length) {
+        if (y > 240) { doc.addPage(); y = 15; }
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text('Identified Bottlenecks', 14, y);
+        y += 2;
+
+        const bnRows = categoryData.bottlenecks.map(b => [
+            b.region || '',
+            `${b.combined_risk || 0}%`,
+            (b.explanations || []).join('; '),
+        ]);
+
+        doc.autoTable({
+            startY: y,
+            head: [['Region', 'Risk %', 'Explanations']],
+            body: bnRows,
+            theme: 'grid',
+            headStyles: { fillColor: [244, 63, 94], fontSize: 9, fontStyle: 'bold' },
+            bodyStyles: { fontSize: 8 },
+            margin: { left: 14, right: 14 },
+            styles: { cellPadding: 3 },
+            columnStyles: { 2: { cellWidth: 90 } },
+        });
+        y = doc.lastAutoTable.finalY + 10;
+    }
+
+    // ── Recommendations ──
+    if (categoryData.recommendations?.length) {
+        if (y > 240) { doc.addPage(); y = 15; }
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text('Recommendations', 14, y);
+        y += 2;
+
+        const recRows = categoryData.recommendations.map(r => [
+            `P${r.priority}`,
+            r.title || '',
+            r.action_type?.replace(/_/g, ' ') || '',
+            r.description || '',
+        ]);
+
+        doc.autoTable({
+            startY: y,
+            head: [['Priority', 'Title', 'Action', 'Description']],
+            body: recRows,
+            theme: 'grid',
+            headStyles: { fillColor: [139, 92, 246], fontSize: 9, fontStyle: 'bold' },
+            bodyStyles: { fontSize: 8 },
+            margin: { left: 14, right: 14 },
+            styles: { cellPadding: 3 },
+            columnStyles: { 3: { cellWidth: 80 } },
+        });
+    }
+
+    // ── Footer ──
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.text(`SupplyShield — ${cat} Report — Page ${i} of ${pageCount}`, 14, doc.internal.pageSize.getHeight() - 8);
+        doc.text('Confidential — For internal use only', pageW - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+    }
+
+    doc.save(`SupplyShield_${cat}_Report_${now}.pdf`);
+}
+
 export default function Categories() {
     const { isPremium } = useAuth();
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [categoryData, setCategoryData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [exporting, setExporting] = useState(null); // 'pdf' | 'csv' | null
 
     const handleCategoryClick = async (category) => {
         if (!isPremium) {
@@ -37,11 +283,8 @@ export default function Categories() {
             const res = await getCategoryInsights(category);
             setCategoryData(res.data);
         } catch (err) {
-            // If the backend returns 403 because it doesn't recognize the user as premium,
-            // show the data anyway since we track premium on the frontend for demo
             if (err.response?.status === 403) {
                 setError(null);
-                // Fetch without auth check — direct API call
                 try {
                     const res = await fetch(`/api/dashboard/category/${category}`);
                     if (res.ok) {
@@ -58,6 +301,22 @@ export default function Categories() {
             }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleExport = async (type) => {
+        if (!categoryData) return;
+        setExporting(type);
+        try {
+            if (type === 'csv') {
+                downloadCSV(categoryData);
+            } else {
+                await downloadPDF(categoryData);
+            }
+        } catch (err) {
+            console.error(`Export ${type} failed:`, err);
+        } finally {
+            setTimeout(() => setExporting(null), 600);
         }
     };
 
@@ -147,7 +406,57 @@ export default function Categories() {
             )}
             {categoryData && !loading && (
                 <div className="animate-in">
-                    <div className="dashboard-grid-2" style={{ marginTop: 24 }}>
+                    {/* ── Export Toolbar ── */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                        gap: 10,
+                        marginTop: 24,
+                        marginBottom: 4,
+                    }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginRight: 'auto' }}>
+                            📥 Export this report for offline use
+                        </span>
+                        <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => handleExport('csv')}
+                            disabled={exporting === 'csv'}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                background: exporting === 'csv' ? 'rgba(16,185,129,0.15)' : undefined,
+                                borderColor: exporting === 'csv' ? '#10b981' : undefined,
+                                transition: 'all 0.3s',
+                            }}
+                        >
+                            {exporting === 'csv' ? (
+                                <><span className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Exporting...</>
+                            ) : (
+                                <>📄 Download CSV</>
+                            )}
+                        </button>
+                        <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => handleExport('pdf')}
+                            disabled={exporting === 'pdf'}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                background: exporting === 'pdf'
+                                    ? 'rgba(244,63,94,0.15)'
+                                    : 'linear-gradient(135deg, #ef4444, #f43f5e)',
+                                borderColor: exporting === 'pdf' ? '#f43f5e' : 'transparent',
+                                transition: 'all 0.3s',
+                            }}
+                        >
+                            {exporting === 'pdf' ? (
+                                <><span className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }} /> Generating...</>
+                            ) : (
+                                <>📕 Download PDF</>
+                            )}
+                        </button>
+                    </div>
+
+                    <div className="dashboard-grid-2">
                         <div className="glass-card">
                             <div className="glass-card-header">
                                 <span className="glass-card-title">{CATEGORIES.find(c => c.name === categoryData.category)?.icon} {categoryData.category} Risk Analysis</span>
