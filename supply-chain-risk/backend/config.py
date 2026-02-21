@@ -31,8 +31,11 @@ class Settings(BaseSettings):
     TRADE_API_URL: str = "https://api.data.gov.in/resource"
     LOGISTICS_API_URL: str = os.getenv("LOGISTICS_API_URL", "")
 
-    # CORS
-    CORS_ORIGINS: list = ["http://localhost:5173", "http://localhost:3000"]
+    # CORS — set CORS_ORIGINS env var in production (comma-separated)
+    CORS_ORIGINS: list = os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://localhost:3000"
+    ).split(",")
 
     class Config:
         env_file = ".env"
